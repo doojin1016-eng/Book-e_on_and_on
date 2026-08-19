@@ -1,30 +1,16 @@
-# 품목 신호등 웹앱 — 공식 배포 레포
+# 품목 신호등 웹앱 — 파일 올리는 곳 (공식)
 
-3조 품목 파일럿(Pummok Pilot)의 **공개 배포처**입니다. `team3sync/pummok-pilot/`(private,
-현재 개발용 스테이징)의 `index.html`·`data/`를 그대로 옮겨온 것입니다.
+3조 품목 파일럿(Pummok Pilot)의 **공개 배포처이자, 지금부터 전원의 산출물 업로드 창구**입니다.
+`team3sync/pummok-pilot/`은 8/18~19 임시 스테이징이었고, **8/19부터 여기가 원본**입니다.
 
-## GitHub Pages 켜기 (레포 소유자만 가능 — 아직 안 돼 있음)
+## 파일 올리는 법 (전원)
 
-1. 이 레포 **Settings → Pages**
-2. **Source**: `Deploy from a branch`
-3. **Branch**: `main` / `(root)` 선택 → Save
-4. 몇 분 뒤 `https://doojin1016-eng.github.io/Book-e_on_and_on/` 에서 열림
+1. 이 레포를 `git clone`(이미 있으면 `git pull`)
+2. 본인 스킬로 만든 `.md` 파일을 `data/`에 복사
+3. `git add data/<파일명> && git commit -m "..." && git push`
 
-## 여는 법 (Pages 켜지기 전에는 로컬로)
-
-1. `index.html` 더블클릭
-2. 데이터 소스에서 **GitHub API (자동)** 선택
-3. owner=`doojin1016-eng`, repo=`Book-e_on_and_on`, branch=`main`, path=`data` 입력 후 [불러오기]
-
-이 레포는 **public**이라 team3sync와 달리 자동 반영이 정상 동작합니다.
-
-## 데이터 갱신
-
-지금은 `team3sync/pummok-pilot/data/`가 원본이고, 이 레포는 **수동으로 다시 복사**해서
-올리는 사본입니다. 자동 동기화가 아니므로, 최신 데이터를 배포에 반영하려면 그쪽 데이터를
-다시 이 레포의 `data/`로 복사해서 push해야 합니다.
-
-## 모듈코드
+**파일명 규칙** — `{모듈}_{YYYY-MM-DD}_{범위}.md`
+예) `ra-device_2026-08-19_보완대응.md`
 
 | 모듈코드 | 담당 |
 |---|---|
@@ -35,3 +21,40 @@
 | `ra-drug` 인허가(의약품) | 김윤설 |
 | `ra-device` 인허가(의료기기) | 홍두진 |
 | `acc` 회계·결산 | 이민정 |
+
+- 같은 모듈 파일이 여러 개면 **날짜가 가장 최근인 것 하나만** 읽는다. 옛 파일은 지우지 않아도 됨.
+- 규칙 밖 이름은 조용히 무시되고 화면의 '통합 미반영'에만 뜬다.
+- 파일 안에는 ` ```json ` 블록 **1개**, 그 안에 `rows[]` 배열 (개발분담서 04번 실물 예시 A 형식).
+- **경과일·지연일·신호등은 적지 않는다.** 웹앱이 계산한다.
+- 데이터는 **가상**으로 만든다 (SSOT 7-2 — 데모는 공개·가상 데이터로 수행).
+
+## 화면으로 확인하는 법
+
+**이 레포는 public이라 자동 반영이 정상 동작합니다.**
+
+1. `index.html` 더블클릭 (설치·서버 불필요)
+2. 데이터 소스에서 **GitHub API (자동)** 선택 (기본값)
+3. owner=`doojin1016-eng`, repo=`Book-e_on_and_on`, branch=`main`, path=`data` 입력 → [불러오기]
+4. 통합현황판에 품목 1행이 경과일·지연일·신호등과 함께 뜨면 정상
+
+인터넷이 막히거나 API 한도(비로그인 시간당 60회)에 걸리면 "수동 업로드"로 같은 `data/`
+파일을 직접 선택해도 동일하게 동작합니다.
+
+## GitHub Pages로 실제 게시하기 (레포 소유자만 가능 — 아직 안 돼 있음)
+
+1. 이 레포 **Settings → Pages**
+2. **Source**: `Deploy from a branch`
+3. **Branch**: `main` / `(root)` 선택 → Save
+4. 몇 분 뒤 `https://doojin1016-eng.github.io/Book-e_on_and_on/` 에서 링크 하나로 열림
+
+## team3sync/pummok-pilot과의 관계
+
+`team3sync/pummok-pilot/`은 이 레포가 생기기 전(8/18~19) 임시로 쓰던 곳입니다. 지금부터는
+**여기(`Book-e_on_and_on`)에만 새 파일을 올리면 됩니다** — team3sync 쪽은 더 이상 갱신하지
+않습니다. 8/18~19에 거기 올렸던 파일은 이미 이 레포의 `data/`로 옮겨와 있습니다.
+
+## 쓰기 권한이 없다면
+
+이 레포는 `doojin1016-eng` 계정 소유입니다. push가 안 되면(권한 오류) 계정 소유자에게
+collaborator 초대를 요청하세요 — team3sync 권한과는 별개로 이 레포에도 초대가 필요할 수
+있습니다.
