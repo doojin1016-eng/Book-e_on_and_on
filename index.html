@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>품목 신호등 — 관통 v0 (3조 품목 파일럿)</title>
+<style>
+  :root{ --navy:#1F2A37; --accent:#149E9C; --gold:#C29A5B; --ink:#242A33; --mut:#6b7280;
+         --line:#e2e6ec; --bg:#f4f6f9; --card:#fff; --red:#c0392b; --amber:#b7791f; --green:#1e7d55; }
+  *{box-sizing:border-box}
+  body{font-family:'Malgun Gothic','Segoe UI',sans-serif;line-height:1.6;color:var(--ink);background:var(--bg);margin:0;padding:0 0 60px}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px}
+  header.top{background:linear-gradient(135deg,#1F2A37,#111925);color:#fff;border-radius:14px;padding:20px 24px;margin:8px 0 18px;position:relative}
+  header.top::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:5px;background:var(--gold);border-radius:3px}
+  header.top h1{margin:2px 0 4px;font-size:20px;padding-left:14px}
+  header.top .sub{font-size:12.5px;color:#C3CEDA;padding-left:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:14px 0}
+  .card h2{font-size:16px;color:var(--navy);margin:0 0 10px}
+  label{font-size:12.5px;color:var(--mut)}
+  input[type=text],input[type=date]{border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:13px;font-family:inherit}
+  button{background:var(--navy);color:#fff;border:0;border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+  button.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+  button:hover{opacity:.9}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0}
+  .verdict{border-radius:12px;padding:14px 20px;margin:14px 0;font-size:15px;font-weight:700;border:2px solid}
+  .verdict.yes{background:#eaf7f1;border-color:var(--green);color:var(--green)}
+  .verdict.no{background:#fdeceb;border-color:var(--red);color:var(--red)}
+  .verdict.wait{background:#fbf6ea;border-color:var(--gold);color:#6b5326}
+  .verdict small{display:block;font-weight:400;font-size:12.5px;color:var(--ink);margin-top:5px}
+  .twrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:980px}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top;white-space:nowrap}
+  th{background:#eef1f5;color:var(--navy);font-weight:700}
+  .sig{font-weight:700}
+  .RED{color:var(--red)} .AMBER{color:var(--amber)} .GREEN{color:var(--green)} .NONE{color:var(--mut)}
+  ul.log{font-size:12.5px;padding-left:18px;margin:6px 0}
+  ul.log li{margin:3px 0}
+  .ok::marker{content:"OK "} .bad::marker{content:"X "} .warn::marker{content:"! "}
+  .swap{background:#eef8f8;border-left:4px solid var(--accent);border-radius:0 8px 8px 0;padding:9px 14px;font-size:12.5px;margin:10px 0}
+  code{background:#eef1f5;border-radius:4px;padding:1px 5px;font-size:12px;font-family:Consolas,monospace;color:#0f5c5a}
+  .muted{color:var(--mut);font-size:12px}
+  .alert{border:1px solid var(--red);background:#fdeceb;border-radius:8px;padding:8px 12px;font-size:12.5px;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="sub">3조 · 품목 파일럿 · 관통(Vertical Slice) v0 · 2026-08-18 · 이주현</div>
+    <h1>품목 신호등 — 통합 현황판</h1>
+  </header>
+
+  <!-- ============ 데이터 소스 ============ -->
+  <div class="card">
+    <h2>데이터 소스</h2>
+    <div class="row">
+      <label><input type="radio" name="src" value="gh" checked> GitHub API (자동)</label>
+      <label><input type="radio" name="src" value="manual"> 수동 업로드 (폴백)</label>
+      <span style="margin-left:auto"></span>
+      <label>기준일 <input type="date" id="today" value="2026-08-18"></label>
+    </div>
+
+    <div id="ghBox">
+      <div class="row">
+        <label>owner <input type="text" id="owner" size="14" placeholder="예: hongdujin"></label>
+        <label>repo <input type="text" id="repo" size="16" placeholder="예: pummok-pilot"></label>
+        <label>branch <input type="text" id="branch" size="8" value="main"></label>
+        <label>path <input type="text" id="path" size="8" value="data"></label>
+        <button id="btnLoad">불러오기</button>
+        <button class="ghost" id="btnSpike">연결 테스트 (2-4 스파이크)</button>
+      </div>
+      <div class="muted">비로그인 GitHub API는 시간당 60회 제한. 공개 레포만 읽는다.</div>
+    </div>
+
+    <div id="manualBox" style="display:none">
+      <div class="row">
+        <input type="file" id="files" multiple accept=".md">
+        <span class="muted">/data 안의 .md 파일을 전부 선택 (자동이 끊겨도 이 경로로 완주 가능)</span>
+      </div>
+    </div>
+    <div id="srcMsg" class="muted"></div>
+  </div>
+
+  <!-- ============ 관통 판정 ============ -->
+  <div id="verdict" class="verdict wait">관통 판정 — 대기 중
+    <small>데이터를 불러오면 2-2 완료 판정(예/아니오)이 여기에 뜬다.</small>
+  </div>
+
+  <!-- ============ 통합 현황판 ============ -->
+  <div class="card">
+    <h2>01 통합 현황판 <span class="muted">— 품목 1개 = 1행</span></h2>
+    <div class="twrap">
+      <table id="board">
+        <thead><tr>
+          <th>품목명 · 품목ID</th><th>구분</th><th>현재단계</th><th>경과 / 지연</th>
+          <th>일정</th><th>개발검토</th><th>R&amp;D</th><th>인허가</th><th>회계</th>
+          <th>종합</th><th>병목</th><th>최근접 기한</th><th>누적 지출</th><th>최종갱신 · 신선도</th>
+        </tr></thead>
+        <tbody><tr><td colspan="14" class="muted">— 아직 불러오지 않음 —</td></tr></tbody>
+      </table>
+    </div>
+    <div id="alerts"></div>
+    <div class="muted" style="margin-top:8px">● GREEN 정상 · ▲ AMBER 주의 · ■ RED 조치 · ○ 미착수</div>
+  </div>
+
+  <!-- ============ 통합 미반영 ============ -->
+  <div class="card">
+    <h2>통합 미반영 <span class="muted">— 조용히 통과시키지 않는다</span></h2>
+    <div id="rejected" class="muted">—</div>
+  </div>
+
+  <!-- ============ 접합 로그 ============ -->
+  <div class="card">
+    <h2>접합 로그 <span class="muted">— J1~J5 어디까지 흘렀나</span></h2>
+    <ul class="log" id="jlog"><li class="warn">아직 실행 전</li></ul>
+    <div class="swap"><strong>교체 지점 2곳</strong> — <code>validate()</code>는 이민정 D5(8/22),
+      <code>rollup()</code>은 홍두진 D6(8/22)로 통째로 바꾼다. 함수 시그니처와 반환 모양(J4·J5)만 지키면 나머지는 손대지 않는다.</div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   3조 품목 파일럿 — 관통 v0 (2026-08-18, 이주현)
+   개발분담서 04 rev.260813 의 접합 계약 J1~J5 를 함수 경계로 그대로 옮긴 것.
+   ========================================================================= */
+
+const MODULES = ['master','dev-drug','dev-device','rnd','ra-drug','ra-device','acc'];
+const FNAME   = /^([a-z-]+)_(\d{4}-\d{2}-\d{2})_(.+)\.md$/;
+const CORE7   = ['item_id','stage','activity_id','status','reason_code','evidence','next_action'];
+const BUCKET  = { 'dev-drug':'dev','dev-device':'dev','rnd':'rnd','ra-drug':'ra','ra-device':'ra','acc':'acc' };
+
+let JLOG = [], IGNORED = [], REJECTED = [];
+
+const days = (a,b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+
+/* ---------- J1 : 파일 올리는 사람 4명 -> 자동 로더 -------------------------
+   파일명을 규칙으로 분류하고 모듈별 날짜 최신 1개만 남긴다.
+   규칙 밖 파일명은 무시하되 '반영 안 됨'에 기록한다.                        */
+function selectLatest(files){
+  const byModule = {};
+  for (const f of files){
+    const m = f.name.match(FNAME);
+    if (!m || !MODULES.includes(m[1])){
+      IGNORED.push({ file:f.name, reason:'J1 — 파일명 규칙 위반: {모듈}_{YYYY-MM-DD}_{범위}.md 아님' });
+      continue;
+    }
+    const mod = m[1], date = m[2];
+    if (!byModule[mod]){
+      byModule[mod] = { name:f.name, text:f.text, module:mod, date:date };
+    } else if (byModule[mod].date < date){
+      IGNORED.push({ file:byModule[mod].name, reason:'J1 — 같은 모듈에 더 최신 파일(' + date + ')이 있어 제외' });
+      byModule[mod] = { name:f.name, text:f.text, module:mod, date:date };
+    } else if (byModule[mod].date === date){
+      IGNORED.push({ file:f.name, reason:'J1 — 같은 모듈·같은 날짜 파일 중복 (모듈당 1개만 읽는다) — 먼저 온 ' + byModule[mod].name + ' 을 채택' });
+    } else {
+      IGNORED.push({ file:f.name, reason:'J1 — 같은 모듈에 더 최신 파일(' + byModule[mod].date + ')이 있어 제외' });
+    }
+  }
+  JLOG.push({ j:'J1', ok:true, msg:'파일 ' + files.length + '개 -> 모듈 ' + Object.keys(byModule).length + '종 선택 · 무시 ' + IGNORED.length + '건' });
+  return byModule;
+}
+
+/* ---------- J2 : 모듈 스킬 6종 -> 파서 -------------------------------------
+   MD 안의 json 코드블록 1개를 꺼내 JSON.parse. 실패하면 파일 전체를 미반영.  */
+function parseMd(file){
+  const m = file.text.match(/```json\s*([\s\S]*?)```/);
+  if (!m){ IGNORED.push({ file:file.name, reason:'J2 — json 코드블록이 없음 (파일 전체 미반영)' }); return null; }
+  let obj;
+  try { obj = JSON.parse(m[1]); }
+  catch(e){ IGNORED.push({ file:file.name, reason:'J2 — JSON 파싱 실패: ' + e.message + ' (파일 전체 미반영)' }); return null; }
+
+  if (file.module !== 'master'){
+    if (!Array.isArray(obj.rows)){ IGNORED.push({ file:file.name, reason:'J2 — rows[] 배열 없음 (파일 전체 미반영)' }); return null; }
+    obj.rows.forEach(function(r, i){
+      const miss = CORE7.filter(function(k){ return !(k in r); });
+      if (miss.length) REJECTED.push({ row:r, reason:'J2 — ' + file.name + ' ' + (i+1) + '행 필수키 누락: ' + miss.join(', ') });
+      r.__src = file.name; r.__module = file.module; r.__generated_at = obj.generated_at;
+    });
+    obj.rows = obj.rows.filter(function(r){ return CORE7.every(function(k){ return k in r; }); });
+  }
+  return obj;
+}
+
+/* ---------- J4 : 검사 함수 (이민정 D5 · 8/22) -------------------------------
+   ★관통에서는 통과 처리(빈 껍데기). 반환 모양만 계약대로 맞춰 둔다.
+     validate(rows, master) -> { valid:[], rejected:[{row, reason}] }        */
+function validate(rows, master){
+  return { valid: rows.slice(), rejected: [] };   // <- D5 도착 시 이 함수만 통째로 교체
+}
+
+/* ---------- J3 : 품목마스터 조인 -------------------------------------------
+   마스터에 없는 item_id 는 행 전체 오류로 뺀다.                              */
+function joinMaster(rows, master){
+  const ids = {};
+  (master.items || []).forEach(function(i){ ids[i.item_id] = true; });
+  const kept = [];
+  rows.forEach(function(r){
+    if (!ids[r.item_id]) REJECTED.push({ row:r, reason:'J3 — 품목마스터 미등재 item_id (' + r.item_id + ')' });
+    else kept.push(r);
+  });
+  return kept;
+}
+
+/* ---------- J5 : 롤업 함수 (홍두진 D6 · 8/22) -------------------------------
+   ★관통용 최소 구현. SSOT 8-2 롤업 규칙 그대로 계산한다.
+     rollup(valid, master, today) -> { items:[1행객체], alerts:[] }          */
+function rollup(valid, master, today){
+  const std = {};
+  (master.stage_def || []).forEach(function(s){ std[s.code] = s.standard_days; });
+  const items = [], alerts = [];
+
+  (master.items || []).forEach(function(it){
+    const mine = valid.filter(function(r){ return r.item_id === it.item_id; });
+
+    const elapsed = days(it.stage_entered_at, today);
+    const S = std[it.stage];
+    const delay = (S == null) ? null : elapsed - S;
+    const schedule = (S == null) ? 'NONE' : (elapsed > S * 1.3 ? 'RED' : (elapsed > S ? 'AMBER' : 'GREEN'));
+
+    function sigOf(b){
+      const rs = mine.filter(function(r){ return BUCKET[r.__module] === b; });
+      if (!rs.length) return 'NONE';
+      if (rs.some(function(r){ return r.status === 'RED'; }))   return 'RED';
+      if (rs.some(function(r){ return r.status === 'AMBER'; })) return 'AMBER';
+      return 'GREEN';
+    }
+    const sig = { schedule:schedule, dev:sigOf('dev'), rnd:sigOf('rnd'), ra:sigOf('ra'), acc:sigOf('acc') };
+    const five = [sig.schedule, sig.dev, sig.rnd, sig.ra, sig.acc];
+    sig.total = five.indexOf('RED') >= 0 ? 'RED' : (five.indexOf('AMBER') >= 0 ? 'AMBER' : 'GREEN');
+
+    const order = [['dev','개발검토'],['rnd','R&D'],['ra','인허가'],['acc','회계'],['schedule','일정']];
+    let bottleneck = '—';
+    if (sig.total !== 'GREEN'){
+      for (let k = 0; k < order.length; k++){
+        if (sig[order[k][0]] === sig.total){ bottleneck = order[k][1]; break; }
+      }
+    }
+
+    const dues = mine.map(function(r){ return r.next_action && r.next_action.due; }).filter(Boolean).sort();
+    const spend = mine.reduce(function(s, r){ return s + (Number(r.ext && r.ext.spend) || 0); }, 0);
+    const upds = mine.map(function(r){ return r.__generated_at; }).filter(Boolean).sort();
+    const upd = upds.length ? upds[upds.length - 1] : null;
+    const age = upd ? days(upd, today) : null;
+    const stageDef = (master.stage_def || []).filter(function(s){ return s.code === it.stage; })[0];
+
+    items.push({ item_id:it.item_id, name:it.name, kind:it.kind, stage:it.stage,
+      stage_name: stageDef ? stageDef.name : '',
+      elapsed_days:elapsed, delay_days:delay, sig:sig, bottleneck:bottleneck,
+      next_due: dues[0] || null, spend_total:spend, updated_at:upd, age_days:age,
+      freshness: (age == null ? '없음' : (age > 7 ? '확인필요' : '신선')), rowcount: mine.length });
+
+    if (sig.total === 'RED'){
+      const src = mine.filter(function(r){ return r.status === 'RED'; })[0];
+      const due = src && src.next_action && src.next_action.due;
+      alerts.push({ level:'RED', item_id:it.item_id,
+        text: bottleneck + ' ' + ((src && src.next_action && src.next_action.what) || '조치 필요')
+              + (due ? ' 기한 D-' + days(today, due) : ''),
+        code: (src && src.reason_code) || null });
+    }
+    if (age != null && age > 7){
+      alerts.push({ level:'AMBER', item_id:it.item_id, text:'최종 갱신 ' + age + '일 경과 — 확인필요', code:null });
+    }
+  });
+
+  return { items: items, alerts: alerts };
+}
+
+/* ---------- 조립자 (이주현) ------------------------------------------------ */
+function assemble(files){
+  JLOG = []; IGNORED = []; REJECTED = [];
+  const today = document.getElementById('today').value || new Date().toISOString().slice(0,10);
+
+  const picked = selectLatest(files);
+
+  const masterFile = picked['master'];
+  if (!masterFile){ fail('J3 — 품목마스터 파일이 없다 (master_YYYY-MM-DD_*.md)'); return; }
+  const master = parseMd(masterFile);
+  if (!master || !Array.isArray(master.items)){ fail('J3 — 품목마스터를 읽지 못했다'); return; }
+  JLOG.push({ j:'J3', ok:true, msg:'품목마스터 ' + master.items.length + '건 · 단계정의 ' + (master.stage_def||[]).length + '종 로드' });
+
+  let rows = [], modCount = 0;
+  MODULES.forEach(function(mod){
+    if (mod === 'master' || !picked[mod]) return;
+    const o = parseMd(picked[mod]);
+    if (o){ rows = rows.concat(o.rows); modCount++; }
+  });
+  JLOG.push({ j:'J2', ok: rows.length > 0, msg:'모듈 파일 ' + modCount + '종 -> 행 ' + rows.length + '건 파싱' });
+
+  const v = validate(rows, master);
+  REJECTED.push.apply(REJECTED, v.rejected);
+  JLOG.push({ j:'J4', ok:true, msg:'검사 함수 통과 ' + v.valid.length + '건 / 반려 ' + v.rejected.length + '건 — <b>빈 껍데기 (D5 미도착)</b>' });
+
+  const joined = joinMaster(v.valid, master);
+
+  let out;
+  try { out = rollup(joined, master, today); }
+  catch(e){ fail('J5 — 롤업 실패: ' + e.message); return; }
+  const keysOk = out && Array.isArray(out.items) && Array.isArray(out.alerts);
+  JLOG.push({ j:'J5', ok:keysOk, msg:'롤업 -> items ' + out.items.length + '행 · alerts ' + out.alerts.length + '건 — <b>임시 구현 (D6 미도착)</b>' });
+
+  render(out, today);
+}
+
+function fail(msg){ JLOG.push({ j:'—', ok:false, msg:msg }); renderLog(); setVerdict(false, msg); }
+
+/* ---------- 렌더 ---------------------------------------------------------- */
+const MARK = { GREEN:'● GREEN', AMBER:'▲ AMBER', RED:'■ RED', NONE:'○ 미착수' };
+function cell(s){ return '<span class="sig ' + s + '">' + MARK[s] + '</span>'; }
+
+function render(out, today){
+  const tb = document.querySelector('#board tbody');
+  tb.innerHTML = out.items.length ? out.items.map(function(i){
+    return '<tr>'
+      + '<td><b>' + i.name + '</b><br><span class="muted">' + i.item_id + '</span></td>'
+      + '<td>' + i.kind + '</td>'
+      + '<td>' + i.stage + ' ' + i.stage_name + '</td>'
+      + '<td>' + i.elapsed_days + '일 / ' + (i.delay_days == null ? '—' : (i.delay_days > 0 ? '+' : '') + i.delay_days) + '</td>'
+      + '<td>' + cell(i.sig.schedule) + '</td><td>' + cell(i.sig.dev) + '</td><td>' + cell(i.sig.rnd) + '</td>'
+      + '<td>' + cell(i.sig.ra) + '</td><td>' + cell(i.sig.acc) + '</td><td>' + cell(i.sig.total) + '</td>'
+      + '<td>' + i.bottleneck + '</td>'
+      + '<td>' + (i.next_due ? i.next_due + ' (D-' + days(today, i.next_due) + ')' : '—') + '</td>'
+      + '<td>' + (i.spend_total ? i.spend_total.toLocaleString() + '원' : '—') + '</td>'
+      + '<td>' + (i.updated_at || '—') + (i.age_days == null ? '' : ' · ' + i.age_days + '일 · ' + i.freshness) + '</td>'
+      + '</tr>';
+  }).join('') : '<tr><td colspan="14" class="muted">— 표시할 품목 없음 —</td></tr>';
+
+  document.getElementById('alerts').innerHTML = out.alerts.map(function(a){
+    return '<div class="alert"><b>' + a.level + '</b> · ' + a.item_id + ' — ' + a.text
+         + (a.code ? ' <code>' + a.code + '</code>' : '') + '</div>';
+  }).join('');
+
+  const all = IGNORED.map(function(x){ return '<li class="bad"><code>' + x.file + '</code> — ' + x.reason + '</li>'; })
+    .concat(REJECTED.map(function(x){ return '<li class="bad">행 <code>' + (x.row.item_id || '(ID없음)') + '</code> — ' + x.reason + '</li>'; }));
+  document.getElementById('rejected').innerHTML = all.length
+    ? '<ul class="log">' + all.join('') + '</ul>' : '<span class="muted">미반영 0건</span>';
+
+  renderLog();
+
+  // 2-2 완료 판정
+  let r = out.items.filter(function(i){ return i.item_id === 'PM-2026-999'; })[0] || out.items[0];
+  const ok = !!r && r.rowcount > 0 && isFinite(r.elapsed_days) && r.sig.total !== 'NONE';
+  setVerdict(ok, ok
+    ? r.item_id + ' 1행이 경과일 ' + r.elapsed_days + '일 · 지연 ' + (r.delay_days > 0 ? '+' : '') + r.delay_days
+      + ' · 종합 ' + r.sig.total + ' · 병목 ' + r.bottleneck + ' 으로 렌더됨 (기준일 ' + today + ')'
+    : '1행이 계산과 함께 뜨지 않았다 — 접합 로그의 X 지점을 보라');
+}
+
+function renderLog(){
+  document.getElementById('jlog').innerHTML = JLOG.map(function(l){
+    return '<li class="' + (l.ok ? 'ok' : 'bad') + '"><b>' + l.j + '</b> ' + l.msg + '</li>';
+  }).join('');
+}
+
+function setVerdict(ok, msg){
+  const v = document.getElementById('verdict');
+  v.className = 'verdict ' + (ok ? 'yes' : 'no');
+  v.innerHTML = '관통 완료 판정 (2-2) — ' + (ok ? '예' : '아니오') + '<small>' + msg + '</small>';
+}
+
+/* ---------- 소스 A : GitHub API (4-2 자동 반영) ---------------------------- */
+async function loadGitHub(){
+  const o = val('owner'), r = val('repo'), b = val('branch') || 'main', p = val('path') || 'data';
+  if (!o || !r){ msg('owner / repo 를 먼저 입력하세요. (레포가 아직 없으면 수동 업로드로 관통을 완주할 수 있습니다)'); return; }
+  try { localStorage.setItem('pp_gh', JSON.stringify({o:o,r:r,b:b,p:p})); } catch(e){}
+  msg('GitHub API 호출 중…');
+  try {
+    const res = await fetch('https://api.github.com/repos/' + o + '/' + r + '/contents/' + p + '?ref=' + b);
+    const list = await res.json();
+    if (!Array.isArray(list)) throw new Error(list.message || '디렉터리 목록을 읽지 못함');
+    const mds = list.filter(function(f){ return f.name.slice(-3) === '.md'; });
+    const files = await Promise.all(mds.map(async function(f){
+      return { name:f.name, text: await (await fetch(f.download_url)).text() };
+    }));
+    msg('OK — GitHub에서 ' + files.length + '개 파일을 읽었다.');
+    assemble(files);
+  } catch(e){
+    msg('실패 — GitHub 읽기: ' + e.message + ' → 수동 업로드 폴백으로 전환하세요.');
+  }
+}
+
+/* ---------- 2-4 스파이크 : 이 브라우저에서 GitHub API가 읽히는가 ----------- */
+async function spike(){
+  msg('스파이크: 이 브라우저에서 GitHub API(CORS) 읽기가 되는지 확인 중…');
+  const origin = location.origin && location.origin !== 'null' ? location.origin : 'file:// (origin: null)';
+  try {
+    const j = await (await fetch('https://api.github.com/rate_limit')).json();
+    msg('<b>2-4 스파이크 = 예.</b> ' + origin + ' 에서 GitHub API가 읽힌다. 남은 호출 '
+        + j.rate.remaining + '/' + j.rate.limit + '회 (15-27 해소 → 자동 반영 진행)');
+  } catch(e){
+    msg('<b>2-4 스파이크 = 아니오.</b> ' + origin + ' / ' + e.message
+        + ' → 4-6 수동 업로드 폴백이 본선이 된다. GitHub Pages 배포를 오늘 올린다.');
+  }
+}
+
+function val(id){ return document.getElementById(id).value.trim(); }
+function msg(t){ document.getElementById('srcMsg').innerHTML = t; }
+
+/* ---------- 소스 B : 수동 업로드 (4-6 폴백) -------------------------------- */
+document.getElementById('files').addEventListener('change', async function(e){
+  const files = await Promise.all([].slice.call(e.target.files).map(function(f){
+    return new Promise(function(res){
+      const rd = new FileReader();
+      rd.onload = function(){ res({ name:f.name, text:rd.result }); };
+      rd.readAsText(f, 'utf-8');
+    });
+  }));
+  msg('OK — 수동 업로드 ' + files.length + '개 파일');
+  assemble(files);
+});
+
+document.querySelectorAll('input[name=src]').forEach(function(el){
+  el.addEventListener('change', function(){
+    const gh = document.querySelector('input[name=src]:checked').value === 'gh';
+    document.getElementById('ghBox').style.display     = gh ? '' : 'none';
+    document.getElementById('manualBox').style.display = gh ? 'none' : '';
+  });
+});
+document.getElementById('btnLoad').onclick  = loadGitHub;
+document.getElementById('btnSpike').onclick = spike;
+
+(function init(){
+  try {
+    const s = JSON.parse(localStorage.getItem('pp_gh') || '{}');
+    if (s.o){
+      document.getElementById('owner').value  = s.o;
+      document.getElementById('repo').value   = s.r;
+      document.getElementById('branch').value = s.b;
+      document.getElementById('path').value   = s.p;
+    }
+  } catch(e){}
+})();
+</script>
+</body>
+</html>
