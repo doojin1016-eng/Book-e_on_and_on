@@ -112,8 +112,8 @@
   <div class="card">
     <h2>접합 로그 <span class="muted">— J1~J5 어디까지 흘렀나</span></h2>
     <ul class="log" id="jlog"><li class="warn">아직 실행 전</li></ul>
-    <div class="swap"><strong>교체 지점 2곳</strong> — <code>validate()</code>는 이민정 D5(8/22),
-      <code>rollup()</code>은 홍두진 D6(8/22)로 통째로 바꾼다. 함수 시그니처와 반환 모양(J4·J5)만 지키면 나머지는 손대지 않는다.</div>
+    <div class="swap"><strong>교체 지점 1곳 남음</strong> — <code>validate()</code>는 이민정 D5 완성 반영됨.
+      <code>rollup()</code>은 홍두진 D6(8/22)로 통째로 바꾼다. 함수 시그니처와 반환 모양(J5)만 지키면 나머지는 손대지 않는다.</div>
   </div>
 </div>
 
@@ -180,11 +180,31 @@ function parseMd(file){
   return obj;
 }
 
-/* ---------- J4 : 검사 함수 (이민정 D5 · 8/22) -------------------------------
-   ★관통에서는 통과 처리(빈 껍데기). 반환 모양만 계약대로 맞춰 둔다.
-     validate(rows, master) -> { valid:[], rejected:[{row, reason}] }        */
+/* ---------- J4 : 검사 함수 (이민정 D5 · 완성) --------------------------------
+   validate(rows, master) -> { valid:[], rejected:[{row, reason}] }
+   걸러내는 불량 3종: ① 활동ID 없음 ② 마스터에 없는 품목ID ③ 근거 없음         */
 function validate(rows, master){
-  return { valid: rows.slice(), rejected: [] };   // <- D5 도착 시 이 함수만 통째로 교체
+  const masterIds = new Set((master.items || []).map(i => i.item_id));
+  const valid = [];
+  const rejected = [];
+
+  for (const row of rows) {
+    if (!row.activity_id) {
+      rejected.push({ row, reason: '활동ID 없음' });
+      continue;
+    }
+    if (!masterIds.has(row.item_id)) {
+      rejected.push({ row, reason: `마스터에 없는 품목ID (${row.item_id})` });
+      continue;
+    }
+    if (!row.evidence || !row.evidence.source) {
+      rejected.push({ row, reason: '근거 없음' });
+      continue;
+    }
+    valid.push(row);
+  }
+
+  return { valid, rejected };
 }
 
 /* ---------- J3 : 품목마스터 조인 -------------------------------------------
@@ -287,7 +307,7 @@ function assemble(files){
 
   const v = validate(rows, master);
   REJECTED.push.apply(REJECTED, v.rejected);
-  JLOG.push({ j:'J4', ok:true, msg:'검사 함수 통과 ' + v.valid.length + '건 / 반려 ' + v.rejected.length + '건 — <b>빈 껍데기 (D5 미도착)</b>' });
+  JLOG.push({ j:'J4', ok:true, msg:'검사 함수 통과 ' + v.valid.length + '건 / 반려 ' + v.rejected.length + '건 — <b>이민정 D5 완성 반영</b>' });
 
   const joined = joinMaster(v.valid, master);
 
